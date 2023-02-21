@@ -1,0 +1,65 @@
+import neurokit2 as nk
+import pandas as pd
+import matplotlib.pyplot as plt
+
+ecg_signal = ecg_signal_test[2].astype(float)
+
+# Extract R-peaks locations
+_, rpeaks_uncorrected = nk.ecg_peaks(ecg_signal, sampling_rate=sampling_frequency2, method='neurokit',correct_artifacts=True)
+# _, rpeaks = nk.ecg_peaks(ecg_signal, sampling_rate=sampling_frequency2)
+
+artifacts, rpeaks_corrected = nk.signal_fixpeaks(rpeaks_uncorrected, iterative=True, method="Kubios", show=True)
+
+plot = nk.events_plot(rpeaks_uncorrected['ECG_R_Peaks'], ecg_signal)
+plt.rcParams['figure.figsize'] = [15, 5]  # Bigger images
+# plt.rcParams['font.size']= 14
+plt.show()
+
+def extract_P_peaks_index(Ecg_signal, sampling_freq):
+    Rpeaks = []
+    for i in range(len(Ecg_signal)):
+        ecg_signal = Ecg_signal[i].astype(float)
+        _, rpeaks_uncorrected = nk.ecg_peaks(ecg_signal,sampling_freq)
+        artifacts, rpeaks_corrected = nk.signal_fixpeaks(
+            rpeaks_uncorrected, iterative=True, method="Kubios", show=True
+        )
+        Rpeaks.append(rpeaks_corrected)
+    return Rpeaks
+
+def plot(Rpeaks, ecg):
+    for i in range(len(Rpeaks)):
+        rpeaks = Rpeaks[i]
+        signal = ecg[i]
+        plot = nk.events_plot(rpeaks['ECG_R_Peaks'], signal)
+        plt.rcParams['figure.figsize'] = [15, 5]  # Bigger images
+        plt.show()
+    return
+
+Rpeaks = extract_P_peaks_index(Ecg_signal, sampling_freq=sampling_frequency2)
+Rpeaks_random = extract_P_peaks_index(Ecg_signal_random, sampling_freq=sampling_frequency2)
+
+plot(Rpeaks_random,Ecg_signal_random)
+
+def min_max_length(record, label_index):
+    Min_length = []
+    Max_length = []
+    RR_interval_total = []
+    for re_num in range(len(record)):
+        # print(len(record))
+        peak_index = label_index[re_num]
+        # print(len(peak_index))
+        RR_interval = []
+        min_length = []
+        max_length = []
+        for j in range(len(peak_index)-1):
+            rr_interval = np.round(peak_index[j+1]-peak_index[j])
+            RR_interval.append(rr_interval)
+        RR_interval_total.append(RR_interval)
+        # RR_interval.append((peak_index[j+1]-peak_index[j]) for j in range(len(peak_index)-1))
+        # print(RR_interval)
+        min_length = int((min(RR_interval)).item())
+        max_length = int((max(RR_interval)).item())
+        Min_length.append(min_length)
+        Max_length.append(max_length)
+
+    return Min_length, Max_length, RR_interval_total
