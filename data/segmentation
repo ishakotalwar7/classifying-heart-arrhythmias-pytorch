@@ -1,0 +1,59 @@
+def segmentation(record, label_index):
+    """
+    segment the ecg signal with the same length. In each segment, let R-peak on the center,
+    capture 144 samples in front of R-peak, capture 180 samples after R-peak.
+    :param record: Record
+    :return: ecg_segments
+    """
+    ecg_segments = []
+    for re_num in range(len(record)):
+        #ventricular_signal = record[re_num].d_signal[0:sample_length]
+        ventricular_signal = record[re_num].p_signal[0:sample_length]#USING P SIGNAL INSTEAD OF D SIGNAL MIGHT BREAK UNNCOMMENT ABOVE LINE AND COMMENT THIS FOR FIX
+        peak_index = label_index[re_num]
+        segments = []
+        for j in range(len(peak_index)-1):
+            lower_bound = peak_index[j] - 200
+            upper_bound = peak_index[j] + 250
+            if lower_bound < 0:
+                seg_index = int(np.round((peak_index[j] + peak_index[j+1])/2))
+                isolated_ecg = ventricular_signal[0:seg_index]
+                segment = isolated_ecg
+            elif upper_bound > sample_length:
+                seg_index = int(np.round((peak_index[j] + peak_index[j-1])/2))
+                isolated_ecg = ventricular_signal[seg_index:sample_length]
+                segment = isolated_ecg
+            else:
+                lower_seg = int(np.round((peak_index[j] + peak_index[j-1])/2))
+                # print(lower_seg)
+                upper_seg = int(np.round((peak_index[j+1] + peak_index[j])/2))
+                # print(upper_seg)
+                seg_index = upper_seg - lower_seg
+                # print(seg_index)
+                # isolated_ecg = ventricular_signal[peak_index[j] - lower_seg:peak_index[j] + upper_seg]
+                isolated_ecg = ventricular_signal[lower_seg:upper_seg]
+                segment = isolated_ecg
+            segments.append(segment)
+        print("Record " + str(re_num) + " is finished.")
+        ecg_segments.append(segments)
+    return ecg_segments
+
+def zero_pad(max_length,ecg_segments):
+    Ecg_segments = []
+    for re_num in range(len(ecg_segments)):
+        segments = ecg_segments[re_num]
+        Segments = []
+        for j in range(len(segments)):
+            isolated_ecg = segments[j]
+            length = len(isolated_ecg)
+            # print(length)
+            if (len(isolated_ecg) % 2) == 0:
+                zero_pad_right = np.zeros((int(max_length/2 - length/2), 1))
+                zero_pad_left = np.zeros((int(max_length/2 - length/2), 1))
+                segment = np.concatenate((zero_pad_left, isolated_ecg, zero_pad_right), axis=None)
+            else:
+                zero_pad_right = np.zeros((int(max_length/2 - (length-1)/2), 1))
+                zero_pad_left = np.zeros((int(max_length/2 - (length-1)/2 - 1), 1))
+                segment = np.concatenate((zero_pad_left, isolated_ecg, zero_pad_right), axis=None)
+            Segments.concatenate(segment)
+        Ecg_segments.append(Segments)
+    return Ecg_segments
