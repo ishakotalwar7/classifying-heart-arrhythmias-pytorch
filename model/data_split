@@ -1,0 +1,107 @@
+from sklearn.utils import shuffle
+def get_train_test(X,y,train_size,classes=classes,patients=all_patients):
+  """
+  Get train and test function for spliting ensuring testing has all classes
+  preseting for testing/eval to see how well all classes are performing. 
+  """
+
+  sub_c={}
+    
+ 
+  for c in classes:
+      C = np.argwhere(y[:,2] == list(classes.values())[c]).flatten()
+
+      sub_c[c]=np.random.choice(C,int((C.shape[0]- C.shape[0]*train_size)))
+
+  X_test = np.vstack([X[sub_c[0]], X[sub_c[1]], X[sub_c[2]], X[sub_c[3]], X[sub_c[4]]])
+  y_test = np.vstack([y[sub_c[0]], y[sub_c[1]], y[sub_c[2]], y[sub_c[3]], y[sub_c[4]]])
+
+  deletions=[]
+  for i in range(len(sub_c)):
+    deletions.extend(sub_c[i].tolist())
+  
+  X_train = np.delete(X, deletions, axis=0)
+  y_train = np.delete(y, deletions, axis=0)
+
+  X_train, y_train = shuffle(X_train, y_train, random_state=0)
+  X_test, y_test = shuffle(X_test, y_test, random_state=0)
+  y_train= np.array([get_key(y_i,classes) for y_i in y_train[:,2]])
+  y_test= np.array([get_key(y_i,classes) for y_i in y_test[:,2]])
+  return X_train,y_train,X_test,y_test
+
+  
+
+X_train,y_train,X_test,y_test=get_train_test(X=X_resamp,y=y,train_size=.80)
+print("X_train:", X_train.shape)
+print("y_train:", y_train.shape)
+print("X_test:", X_test.shape)
+print("y_test:", y_test.shape)
+
+
+
+import warnings
+from torch.utils.data.sampler import WeightedRandomSampler
+import torch
+from torch import optim 
+import random
+import torch.utils.data
+from torch.utils.data.sampler import SubsetRandomSampler
+import random
+from torch.autograd import Variable
+
+def imbalanced_loader(X_train,y_train,X_test,y_test,valid_size=.05,batch_size=512): # Split train into train + validation 
+    """
+    Get trainloader, validloader, and testloader for model training. This 
+    creates equal training batches but naturally balanced validation and testing 
+    sets. Note the testing set was previously augmented to get better per class metrics 
+    
+    Outputs: dataloader + testloader, where dataloader =  {"train": trainloader, "val": validloader}
+
+    """
+    warnings.filterwarnings("ignore") #torch bug
+    print ('Getting Data... {}% Validation Set\n'.format(int(np.around(valid_size*100))))
+    
+    num_train = len(X_train)
+    indices = list(range(num_train))
+    split = int(np.floor(valid_size * num_train))
+    train_idx, valid_idx = indices[split:], indices[:split]
+    
+    print("Batch Size:",batch_size)
+
+    print('\nTrain Len=',len(train_idx),', Validation Len=',len(valid_idx), 'Test Len=',len(y_test))
+                                                                                        
+  
+    class_sample_count = np.array([len(np.where(y_train[[train_idx]]==t)[0]) for t in np.unique(y_train[[train_idx]])])
+    weight = 1. / class_sample_count
+    samples_weight = np.array([weight[t] for t in y_train[[train_idx]]])
+    samples_weight = torch.from_numpy(samples_weight)
+    train_sampler = WeightedRandomSampler(torch.tensor(samples_weight,dtype=torch.double), len(samples_weight))
+    trainDataset = torch.utils.data.TensorDataset(torch.FloatTensor(X_train[[train_idx]]), torch.LongTensor(y_train[[train_idx]].astype(int)))
+    train_sampler= torch.utils.data.BatchSampler(sampler=train_sampler, batch_size=batch_size, drop_last=True)
+    trainloader = torch.utils.data.DataLoader(dataset = trainDataset, batch_size=batch_size, num_workers=1, sampler= train_sampler)
+  
+    
+    valDataset = torch.utils.data.TensorDataset(torch.FloatTensor(X_train[[valid_idx]]), torch.LongTensor(y_train[[valid_idx]].astype(int)))
+    sampler = torch.utils.data.RandomSampler(valDataset)
+    sampler= torch.utils.data.BatchSampler(sampler, batch_size, drop_last=True)
+    validloader = torch.utils.data.DataLoader(dataset = valDataset, batch_size=batch_size, num_workers=1,sampler=sampler)
+
+
+    testset=[]
+    for i,x in enumerate(X_test):
+        testset.append((torch.from_numpy(x),torch.tensor([y_test[i]])))
+    
+    #testloader = torch.utils.data.DataLoader(dataset = testDataset, batch_size=batch_size, shuffle=False, num_workers=1) 
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
+                                           shuffle=False, num_workers=1)
+
+    print("")
+    dataloader = {"train": trainloader, "val": validloader}
+    print('Train Size Batched=',int(len(dataloader['train'].dataset)/batch_size),', Validation Size Batched=',int(len(dataloader['val'].dataset)/batch_size),', Test Size Batched=',len(testloader))
+    
+    
+    warnings.resetwarnings()
+    return dataloader,testloader
+  
+batch_size=512
+dataloader,testloader = imbalanced_loader(X_train=X_train,y_train=y_train,X_test=X_test,y_test=y_test, valid_size=.05,batch_size=batch_size)
