@@ -105,3 +105,8 @@ def imbalanced_loader(X_train,y_train,X_test,y_test,valid_size=.05,batch_size=51
   
 batch_size=512
 dataloader,testloader = imbalanced_loader(X_train=X_train,y_train=y_train,X_test=X_test,y_test=y_test, valid_size=.05,batch_size=batch_size)
+
+
+for hb,labels in dataloader['train']:
+    for hb_index,label in enumerate(labels):
+      print(hb_index,hb[hb_index].size(),label.cpu().numpy().shape,Counter(label.cpu().numpy().flatten()))
