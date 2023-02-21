@@ -1,0 +1,63 @@
+import random 
+import time 
+import pandas as pd 
+import numpy as np
+from collections import Counter
+from scipy import signal
+from scipy.signal import find_peaks, resample
+import matplotlib.pyplot as plt 
+import seaborn as sns
+import os 
+from os import listdir
+from os.path import isfile, join
+import sys
+import warnings 
+from google.colab import drive
+drive.mount('/content/gdrive')
+import pandas as pd 
+import numpy as np 
+from random import choices
+from collections import Counter 
+
+X_resamp= pd.read_csv('/content/gdrive/My Drive/ECG Classification/data/X_resamped.csv')
+y= pd.read_csv('/content/gdrive/My Drive/ECG Classification/data/y.csv')
+
+X_resamp=X_resamp.drop(X_resamp.columns[0],axis=1).values
+y=y.drop(y.columns[0],axis=1).values
+
+classes={0: 'N', 1: 'S', 2: 'V', 3: 'F', 4: 'Q'}
+print('X (resampled):',X_resamp.shape,'y:',y.shape,'Classes:',classes)
+
+def get_key(val,my_dict): 
+    """
+    Simple Function to Get Key 
+    in Dictionary from val. 
+    
+    Input: Key, Dictionary 
+    Output: Val
+    
+    """
+    for key, value in my_dict.items(): 
+         if val == value: 
+            return key 
+    return "key doesn't exist"
+
+def one_hot(c,classes=classes):
+    """
+    Simple one hot encoding for the 
+    types of arrthymia conditions. 
+    
+    class --> encode class
+    'N' --> [1, 0, 0, 0, 0, 0, 0, 0]
+    
+    c:: current class of the object
+    classes:: classes dictionary 
+        
+    """
+    enc=np.zeros(len(classes),dtype=int).tolist()
+    enc[get_key(c,classes)]= 1
+    return enc
+  
+all_patients=['100', '101', '102', '103', '104', '105', '106', '107', '108', '109', '111', '112', '113', '114', '115', '116', '117', '118', '119', '121',
+              '122', '123', '124', '200', '201', '202', '203', '205', '207', '208', '209', '210', '212', '213', '214', '215', '217', '219', '220', '221', 
+              '222', '223', '228', '230', '231', '232', '233', '234']
